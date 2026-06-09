@@ -74,6 +74,58 @@ if ! grep -q "GITHUB_TOKEN" "$ENV_FILE"; then
 fi
 
 echo ""
+echo "====================================================="
+echo "🖥️  Installing Global CLI & Desktop App"
+echo "====================================================="
+
+# Create global CLI 'super' in ~/.local/bin
+mkdir -p "$HOME/.local/bin"
+CLI_PATH="$HOME/.local/bin/super"
+cat << 'EOF' > "$CLI_PATH"
+#!/usr/bin/env bash
+PROJECT_ROOT="__ROOT__"
+source "$PROJECT_ROOT/.venv/bin/activate"
+export PATH="$PROJECT_ROOT/bin:$PATH"
+cd "$PROJECT_ROOT"
+nohup python3 server.py > daemon.log 2>&1 &
+echo "[*] Super MCP Daemon started on port 8080."
+xdg-open "http://localhost:8080" 2>/dev/null || open "http://localhost:8080" 2>/dev/null
+EOF
+sed -i.bak "s|__ROOT__|$PROJECT_ROOT|g" "$CLI_PATH"
+rm -f "${CLI_PATH}.bak"
+chmod +x "$CLI_PATH"
+echo "[✓] Global CLI installed! You can now type 'super' in any terminal."
+
+# Desktop App Shortcut
+if [ "$OS" = "Linux" ]; then
+    DESKTOP_DIR="$HOME/.local/share/applications"
+    mkdir -p "$DESKTOP_DIR"
+    DESKTOP_FILE="$DESKTOP_DIR/super-mcp-lite.desktop"
+    cat << EOF > "$DESKTOP_FILE"
+[Desktop Entry]
+Version=1.0
+Name=Super MCP Lite
+Comment=Universal Agentic IDE
+Exec=$CLI_PATH
+Icon=utilities-terminal
+Terminal=false
+Type=Application
+Categories=Development;
+EOF
+    chmod +x "$DESKTOP_FILE"
+    echo "[✓] Linux Desktop App created in applications menu."
+elif [ "$OS" = "Darwin" ]; then
+    APP_DIR="$HOME/Applications/Super MCP.app"
+    mkdir -p "$APP_DIR/Contents/MacOS"
+    cat << EOF > "$APP_DIR/Contents/MacOS/launcher"
+#!/usr/bin/env bash
+$CLI_PATH
+EOF
+    chmod +x "$APP_DIR/Contents/MacOS/launcher"
+    echo "[✓] macOS App created in ~/Applications."
+fi
+
+echo ""
 echo "[✓] Bootstrapping Complete!"
-echo "Run: source .venv/bin/activate && ./bin/ollama serve & python3 server.py"
+echo "Run 'super' in your terminal, or click 'Super MCP Lite' in your apps menu."
 echo "====================================================="
