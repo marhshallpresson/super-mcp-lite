@@ -717,18 +717,6 @@ class SuperDaemonHandler(http.server.BaseHTTPRequestHandler):
             self.send_json({"agents": AVAILABLE_AGENTS})
             return
 
-        if path == '/api/network':
-            import subprocess
-            try:
-                res = subprocess.run(['vnstat', '--json'], capture_output=True, text=True)
-                if res.returncode == 0:
-                    self.send_json(json.loads(res.stdout))
-                else:
-                    self.send_json({"error": "vnstat not configured. Run: sudo apt install vnstat"}, 500)
-            except Exception as e:
-                self.send_json({"error": "vnstat is not installed. Please run: sudo apt install vnstat && sudo systemctl enable vnstat"}, 500)
-            return
-
         if path == '/api/version':
             # Use timestamp of server.py as dynamic version
             mtime = os.path.getmtime(os.path.abspath(__file__))

@@ -279,10 +279,6 @@
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
         Metrics Dashboard
     </div>
-    <div class="nav-item" data-view="network">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        Network Traffic
-    </div>
 
     <div class="sidebar-section-title" style="display:flex; justify-content:space-between; align-items:center; padding-right:12px;">
         <span>Sessions</span>
@@ -436,17 +432,6 @@
         </div>
     </div>
 
-    <!-- ── Network Monitor View ── -->
-    <div class="view" id="view-network">
-        <div class="view-header">
-            <h2>Network Bandwidth Monitor</h2>
-            <p>Live daily, weekly, and monthly data usage across all combined Wi-Fi and LAN interfaces</p>
-        </div>
-        <div class="settings-content" id="network-content">
-            <div style="display:flex; justify-content:center; align-items:center; height:100px; color:var(--text-muted);">Fetching vnstat telemetry...</div>
-        </div>
-    </div>
-
 </div>
 
 <!-- ── Modals ── -->
@@ -544,7 +529,6 @@ $$('.nav-item').forEach(btn => {
         if (btn.dataset.view === 'artifacts') loadArtifacts();
         if (btn.dataset.view === 'files') loadFiles();
         if (btn.dataset.view === 'dashboard') loadMetrics();
-        if (btn.dataset.view === 'network') loadNetwork();
     });
 });
 
@@ -574,50 +558,6 @@ async function loadMetrics() {
         mc.innerHTML = html;
     } catch(e) {
         mc.innerHTML = '<div style="color:#ff4a4a;">Failed to load agent metrics from daemon.</div>';
-    }
-}
-
-function formatBytes(bytes) {
-    if(bytes === 0) return '0 B';
-    const k = 1024, sizes = ['B', 'KB', 'MB', 'GB', 'TB'], i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-}
-
-async function loadNetwork() {
-    const nc = $('#network-content');
-    nc.innerHTML = '<div style="display:flex; justify-content:center; align-items:center; height:100px; color:var(--text-muted);">Loading telemetry...</div>';
-    try {
-        const res = await fetch('/api/network');
-        const data = await res.json();
-        
-        if (data.error) {
-            nc.innerHTML = `<div style="color:#ff4a4a; font-family:var(--font-mono); font-size:12px;">${data.error}</div>`;
-            return;
-        }
-
-        let html = '<div class="artifacts-grid" style="padding:0;">';
-        for(const iface of data.interfaces) {
-            const today = iface.traffic.day.length > 0 ? iface.traffic.day[0] : {rx:0, tx:0};
-            const month = iface.traffic.month.length > 0 ? iface.traffic.month[0] : {rx:0, tx:0};
-            
-            html += `
-            <div class="artifact-card" style="background:rgba(0,0,0,0.2);">
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
-                    <div class="agent-dot" style="background:#3b82f6;"></div>
-                    <h3 style="margin:0; font-family:var(--font-mono);">${iface.name}</h3>
-                </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-                    <div><div class="meta">Today (Down)</div><div style="font-size:13px; color:#10a37f; font-weight:600;">${formatBytes(today.rx)}</div></div>
-                    <div><div class="meta">Today (Up)</div><div style="font-size:13px; color:#a78bfa; font-weight:600;">${formatBytes(today.tx)}</div></div>
-                    <div><div class="meta">This Month (Down)</div><div style="font-size:13px; color:#10a37f; font-weight:600;">${formatBytes(month.rx)}</div></div>
-                    <div><div class="meta">This Month (Up)</div><div style="font-size:13px; color:#a78bfa; font-weight:600;">${formatBytes(month.tx)}</div></div>
-                </div>
-            </div>`;
-        }
-        html += '</div>';
-        nc.innerHTML = html;
-    } catch(e) {
-        nc.innerHTML = '<div style="color:#ff4a4a;">Failed to load network stats. Make sure vnstat is running.</div>';
     }
 }
 
