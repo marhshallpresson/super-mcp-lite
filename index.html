@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Agentic MCP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-surface: rgba(15, 15, 25, 0.85);
+            --bg-surface-hover: rgba(25, 25, 40, 0.9);
+            --bg-overlay: rgba(10, 10, 18, 0.95);
+            --border: rgba(255,255,255,0.06);
+            --border-active: rgba(255,255,255,0.15);
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa0a6;
+            --text-muted: #5f6368;
+            --accent-agy: #34d399;
+            --accent-codex: #a78bfa;
+            --accent-gemini: #fb923c;
+            --accent-user: #60a5fa;
+            --radius: 12px;
+        }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh; width: 100vw;
+            display: flex; overflow: hidden;
+        }
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 260px; min-width: 260px;
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            display: flex; flex-direction: column;
+            padding: 20px 12px;
+        }
+        .sidebar-logo { display: flex; align-items: center; gap: 10px; padding: 0 8px 24px; }
+        .sidebar-logo-icon {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 20px rgba(99,102,241,0.3);
+        }
+        .sidebar-logo-icon svg { width: 20px; height: 20px; color: white; }
+        .sidebar-logo h1 { font-size: 16px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.3px; }
+
+        .nav-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 12px; border-radius: 8px;
+            color: var(--text-secondary); cursor: pointer;
+            font-size: 13px; font-weight: 500;
+            transition: all 0.15s ease; border: 1px solid transparent;
+            margin-bottom: 2px;
+        }
+        .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+        .nav-item.active {
+            background: rgba(255,255,255,0.06); color: var(--text-primary);
+            border-color: var(--border-active);
+        }
+        .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+        .sidebar-section-title {
+            font-size: 10px; font-weight: 600; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 1.2px;
+            padding: 16px 12px 8px;
+        }
+        .agent-status {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 12px; font-size: 12px; color: var(--text-secondary);
+        }
+        .agent-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .agent-dot.agy { background: var(--accent-agy); box-shadow: 0 0 6px var(--accent-agy); }
+        .agent-dot.codex { background: var(--accent-codex); box-shadow: 0 0 6px var(--accent-codex); }
+        .agent-dot.gemini { background: var(--accent-gemini); box-shadow: 0 0 6px var(--accent-gemini); }
+
+        .sidebar-context {
+            margin-top: auto; padding: 12px;
+            background: rgba(255,255,255,0.03); border-radius: 8px;
+            border: 1px solid var(--border); font-size: 11px;
+        }
+        .sidebar-context .label { color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+        .sidebar-context .value { color: var(--accent-user); font-family: 'JetBrains Mono', monospace; font-size: 11px; word-break: break-all; }
+
+        /* ── Main Area ── */
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #0d0d14; }
+
+        /* ── Views ── */
+        .view { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+        .view.active { display: flex; }
+
+        /* ── Chat Header ── */
+        .chat-header {
+            padding: 16px 24px; border-bottom: 1px solid var(--border);
+            background: var(--bg-overlay);
+        }
+        .chat-header h2 { font-size: 15px; font-weight: 600; }
+        .chat-header p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+        /* ── Chat Messages ── */
+        .chat-messages { flex: 1; overflow-y: auto; padding: 24px; }
+        .msg-group { margin-bottom: 16px; max-width: 75%; animation: fadeIn 0.25s ease; }
+        .msg-group.user { margin-left: auto; }
+        .msg-sender {
+            display: flex; align-items: center; gap: 6px;
+            margin-bottom: 4px; padding-left: 2px;
+        }
+        .msg-avatar {
+            width: 20px; height: 20px; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 9px; font-weight: 700; color: white;
+        }
+        .msg-avatar.agy { background: var(--accent-agy); color: #064e3b; }
+        .msg-avatar.codex { background: var(--accent-codex); }
+        .msg-avatar.gemini { background: var(--accent-gemini); color: #7c2d12; }
+        .msg-name { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .msg-name.agy { color: var(--accent-agy); }
+        .msg-name.codex { color: var(--accent-codex); }
+        .msg-name.gemini { color: var(--accent-gemini); }
+        .msg-name.user { color: var(--accent-user); }
+
+        .msg-bubble {
+            padding: 12px 16px; border-radius: var(--radius);
+            font-size: 13px; line-height: 1.6; word-wrap: break-word;
+        }
+        .msg-bubble.user { background: rgba(96,165,250,0.1); border: 1px solid rgba(96,165,250,0.15); border-bottom-right-radius: 4px; }
+        .msg-bubble.agy { background: rgba(52,211,153,0.06); border: 1px solid rgba(52,211,153,0.12); border-bottom-left-radius: 4px; }
+        .msg-bubble.codex { background: rgba(167,139,250,0.06); border: 1px solid rgba(167,139,250,0.12); border-bottom-left-radius: 4px; }
+        .msg-bubble.gemini { background: rgba(251,146,60,0.06); border: 1px solid rgba(251,146,60,0.12); border-bottom-left-radius: 4px; }
+
+        .msg-bubble code {
+            font-family: 'JetBrains Mono', monospace; font-size: 12px;
+            background: rgba(0,0,0,0.4); padding: 1px 5px; border-radius: 4px;
+            color: #f472b6;
+        }
+        .msg-bubble pre {
+            background: rgba(0,0,0,0.5); border: 1px solid var(--border);
+            border-radius: 8px; padding: 12px; margin: 8px 0;
+            overflow-x: auto; font-family: 'JetBrains Mono', monospace;
+            font-size: 12px; line-height: 1.5; color: #d1d5db;
+        }
+        .msg-bubble strong { color: var(--text-primary); font-weight: 600; }
+
+        /* ── Chat Input ── */
+        .chat-input-area { padding: 16px 24px; border-top: 1px solid var(--border); background: var(--bg-overlay); }
+        .chat-input-wrap {
+            display: flex; align-items: center;
+            background: rgba(0,0,0,0.4); border: 1px solid var(--border);
+            border-radius: 12px; padding: 4px 4px 4px 16px;
+            transition: border-color 0.2s;
+        }
+        .chat-input-wrap:focus-within { border-color: rgba(99,102,241,0.4); }
+        .chat-input-wrap input {
+            flex: 1; background: transparent; border: none; outline: none;
+            color: var(--text-primary); font-size: 13px; font-family: 'Inter', sans-serif;
+            padding: 10px 0;
+        }
+        .chat-input-wrap input::placeholder { color: var(--text-muted); }
+        .chat-send-btn {
+            width: 36px; height: 36px; border-radius: 8px;
+            background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.2);
+            color: #818cf8; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .chat-send-btn:hover { background: rgba(99,102,241,0.25); }
+        .chat-send-btn svg { width: 16px; height: 16px; }
+
+        /* ── Typing Indicator ── */
+        .typing-dots { display: flex; gap: 4px; padding: 14px 16px; }
+        .typing-dots span {
+            width: 6px; height: 6px; border-radius: 50%;
+            animation: typingBounce 1.2s infinite ease-in-out;
+        }
+        .typing-dots span:nth-child(1) { background: var(--accent-agy); animation-delay: 0s; }
+        .typing-dots span:nth-child(2) { background: var(--accent-codex); animation-delay: 0.15s; }
+        .typing-dots span:nth-child(3) { background: var(--accent-gemini); animation-delay: 0.3s; }
+        @keyframes typingBounce { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ── Artifacts View ── */
+        .artifacts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; padding: 24px; overflow-y: auto; }
+        .artifact-card {
+            background: var(--bg-surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 16px; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .artifact-card:hover { background: var(--bg-surface-hover); border-color: var(--border-active); }
+        .artifact-card h3 { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+        .artifact-card .meta { font-size: 11px; color: var(--text-muted); }
+        .artifacts-empty {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            flex: 1; color: var(--text-muted); font-size: 13px; gap: 8px;
+        }
+        .artifacts-empty svg { width: 40px; height: 40px; opacity: 0.3; }
+
+        /* ── Files View ── */
+        .file-list { padding: 24px; overflow-y: auto; flex: 1; }
+        .file-entry {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 12px; border-radius: 6px; cursor: pointer;
+            font-size: 13px; transition: background 0.1s;
+        }
+        .file-entry:hover { background: rgba(255,255,255,0.04); }
+        .file-entry svg { width: 16px; height: 16px; color: var(--text-muted); flex-shrink: 0; }
+        .file-entry .fname { flex: 1; }
+        .file-entry .fsize { font-size: 11px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+
+        /* ── Settings View ── */
+        .settings-content { padding: 24px; overflow-y: auto; flex: 1; }
+        .setting-group { margin-bottom: 24px; }
+        .setting-group h3 { font-size: 13px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary); }
+        .setting-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 0; border-bottom: 1px solid var(--border);
+        }
+        .setting-row .info .title { font-size: 13px; font-weight: 500; }
+        .setting-row .info .desc { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+        .toggle {
+            width: 36px; height: 20px; border-radius: 10px;
+            background: rgba(255,255,255,0.1); cursor: pointer;
+            position: relative; transition: background 0.2s;
+        }
+        .toggle.on { background: var(--accent-agy); }
+        .toggle::after {
+            content: ''; position: absolute; top: 2px; left: 2px;
+            width: 16px; height: 16px; border-radius: 50%;
+            background: white; transition: transform 0.2s;
+        }
+        .toggle.on::after { transform: translateX(16px); }
+
+        .view-header {
+            padding: 16px 24px; border-bottom: 1px solid var(--border);
+            background: var(--bg-overlay);
+        }
+        .view-header h2 { font-size: 15px; font-weight: 600; }
+        .view-header p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    </style>
+</head>
+<body>
+
+<!-- ═══ Sidebar ═══ -->
+<div class="sidebar">
+    <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        </div>
+        <h1>Super MCP</h1>
+    </div>
+
+    <div class="nav-item active" data-view="chat">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+        Team Chat
+    </div>
+    <div class="nav-item" data-view="artifacts">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        Artifacts
+    </div>
+    <div class="nav-item" data-view="files">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+        Files
+    </div>
+    <div class="nav-item" data-view="terminal">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 9l3 3-3 3m5 0h3M4 6h16v12H4z"/></svg>
+        Terminal
+    </div>
+    <div class="nav-item" data-view="settings">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
+        Settings
+    </div>
+
+    <div class="sidebar-section-title" style="display:flex; justify-content:space-between; align-items:center; padding-right:12px;">
+        <span>Sessions</span>
+        <button id="btn-new-session" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:2px;"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:14px;height:14px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg></button>
+    </div>
+    <div id="session-list" style="margin-bottom: 12px;"></div>
+
+    <div class="sidebar-section-title">Agents & Modes</div>
+    <div style="padding: 0 12px 12px;">
+        <select id="agent-mode" style="width:100%; padding:6px; background:rgba(0,0,0,0.3); border:1px solid var(--border); color:var(--text-primary); border-radius:6px; font-size:11px; margin-bottom:8px;">
+            <option value="auto">Auto / Smart Mode</option>
+            <option value="plan">Plan Mode (Read-only)</option>
+            <option value="fast">Fast Mode (Quick/Low-cost)</option>
+            <option value="execute">Execute Mode (Verbose/Action)</option>
+        </select>
+    </div>
+    <div class="agent-status"><div class="agent-dot agy"></div> Agy — Backend</div>
+    <div class="agent-status"><div class="agent-dot codex"></div> Codex — Frontend</div>
+    <div class="agent-status"><div class="agent-dot gemini"></div> Gemini — Product</div>
+
+    <div class="sidebar-context">
+        <div class="label">Working Directory</div>
+        <div class="value" id="sidebar-cwd">Loading…</div>
+    </div>
+</div>
+
+<!-- ═══ Main Area ═══ -->
+<div class="main">
+
+    <!-- ── Chat View ── -->
+    <div class="view active" id="view-chat">
+        <div class="chat-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+                <h2>Team Chat</h2>
+                <p>Session-scoped group chat with Agy, Codex, and Gemini</p>
+            </div>
+            <button id="btn-tts" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:4px;" title="Toggle Voice Narration">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:20px;height:20px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5 10v4a2 2 0 002 2h3l5 5V3l-5 5H7a2 2 0 00-2 2z"/></svg>
+            </button>
+        </div>
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input-area" style="position:relative;">
+            <div id="attachments-preview" style="display:none; padding:4px 8px; margin-bottom:8px; gap:8px; overflow-x:auto;"></div>
+            <form id="chat-form" class="chat-input-wrap">
+                <button type="button" id="btn-attach" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:4px 8px 4px 0; margin-right:4px; border-right:1px solid var(--border);">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:16px;height:16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/></svg>
+                </button>
+                <button type="button" id="btn-voice" style="background:none; border:none; color:var(--text-muted); cursor:pointer; padding:4px 8px; border-right:1px solid var(--border); margin-right:8px;" title="Click to Talk">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:16px;height:16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+                </button>
+                <div id="audio-visualizer" style="display:none; align-items:center; gap:2px; height:20px; margin-right:8px;">
+                    <div class="bar" style="width:3px; height:4px; background:#ff4a4a; border-radius:2px; transition:height 0.05s ease;"></div>
+                    <div class="bar" style="width:3px; height:4px; background:#ff4a4a; border-radius:2px; transition:height 0.05s ease;"></div>
+                    <div class="bar" style="width:3px; height:4px; background:#ff4a4a; border-radius:2px; transition:height 0.05s ease;"></div>
+                    <div class="bar" style="width:3px; height:4px; background:#ff4a4a; border-radius:2px; transition:height 0.05s ease;"></div>
+                    <div class="bar" style="width:3px; height:4px; background:#ff4a4a; border-radius:2px; transition:height 0.05s ease;"></div>
+                </div>
+                <input type="text" id="chat-input" placeholder="Type @path to attach file, or talk to the team…" autocomplete="off" />
+                <button type="submit" class="chat-send-btn">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:16px;height:16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── Artifacts View ── -->
+    <div class="view" id="view-artifacts">
+        <div class="view-header">
+            <h2>Artifacts</h2>
+            <p>Files generated by agent operations — stored in .super/artifacts/</p>
+        </div>
+        <div class="artifacts-grid" id="artifacts-grid"></div>
+    </div>
+
+    <!-- ── Terminal View ── -->
+    <div class="view" id="view-terminal" style="flex-direction:column; height:100%;">
+        <div class="view-header">
+            <h2>Terminal</h2>
+            <p>Direct shell access to the workspace</p>
+        </div>
+        <div id="terminal-output" style="flex:1; background:#000; color:#0f0; padding:12px; font-family:'JetBrains Mono', monospace; font-size:12px; overflow-y:auto; white-space:pre-wrap;"></div>
+        <div style="display:flex; border-top:1px solid #333; background:#000;">
+            <span style="color:#0f0; padding:8px; font-family:'JetBrains Mono', monospace;">$</span>
+            <input type="text" id="terminal-input" style="flex:1; background:transparent; border:none; color:#0f0; outline:none; font-family:'JetBrains Mono', monospace; padding:8px 0;" autocomplete="off" />
+        </div>
+    </div>
+
+    <!-- ── Files View ── -->
+    <div class="view" id="view-files">
+        <div class="view-header">
+            <h2>Project Files</h2>
+            <p id="files-path">Browsing: …</p>
+        </div>
+        <div class="file-list" id="file-list"></div>
+    </div>
+
+    <!-- ── Settings View ── -->
+    <div class="view" id="view-settings">
+        <div class="view-header">
+                <h2>Daemon Settings</h2>
+                <p>Configure sandbox, execution, and session behavior</p>
+            </div>
+            <div class="settings-content">
+                <div class="setting-group" style="margin-bottom: 24px;">
+                    <h3>Orchestration Engine</h3>
+                    <div class="setting-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
+                        <div class="info"><div class="title">Master Orchestrator</div><div class="desc" style="margin-bottom:8px;">Select the dynamic LLM model to act as the primary routing brain</div></div>
+                        <select id="orchestrator-select" style="width:100%; padding:8px; background:#11111b; color:var(--text-primary); border:1px solid var(--border); border-radius:4px;"></select>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <h3>Execution</h3>
+                    <div class="setting-row">
+                        <div class="info"><div class="title">Shell Sandbox</div><div class="desc">Restrict commands to the working directory only</div></div>
+                        <div class="toggle on" data-key="sandbox"></div>
+                    </div>
+                    <div class="setting-row">
+                        <div class="info"><div class="title">Command Timeout</div><div class="desc">Max 30 seconds per command execution</div></div>
+                        <div class="toggle on" data-key="timeout"></div>
+                    </div>
+                    <div class="setting-row">
+                        <div class="info"><div class="title">Auto-save Artifacts</div><div class="desc">Save large outputs to .super/artifacts/ automatically</div></div>
+                        <div class="toggle on" data-key="autosave"></div>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <h3>Session</h3>
+                    <div class="setting-row">
+                        <div class="info"><div class="title">Persist History</div><div class="desc">Save chat history to .super/history.json</div></div>
+                        <div class="toggle on" data-key="persist"></div>
+                    </div>
+                    <div class="setting-row">
+                        <div class="info"><div class="title">Agent Avatars</div><div class="desc">Show colored agent identifiers in chat</div></div>
+                        <div class="toggle on" data-key="avatars"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ── Modals ── -->
+<div id="modal-backdrop" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center; backdrop-filter:blur(2px);">
+    <div style="background:#1e1e2e; border:1px solid var(--border); border-radius:8px; width:400px; padding:20px; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+        <h3 style="margin:0 0 10px 0; color:var(--text-primary); font-size:16px;">Create New Chat Session</h3>
+        <p style="color:var(--text-muted); font-size:12px; margin-bottom:16px;">Enter a name for the new session thread in this workspace.</p>
+        <input type="text" id="new-session-path" placeholder="Feature implementation..." style="width:100%; padding:8px 12px; background:rgba(0,0,0,0.2); border:1px solid var(--border); border-radius:4px; color:var(--text-primary); font-family:var(--font-mono); font-size:12px; margin-bottom:16px;" />
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+            <button id="btn-cancel-session" style="padding:6px 12px; background:transparent; border:1px solid var(--border); border-radius:4px; color:var(--text-primary); cursor:pointer; font-size:12px;">Cancel</button>
+            <button id="btn-create-session" style="padding:6px 12px; background:var(--accent-gemini); border:none; border-radius:4px; color:white; cursor:pointer; font-weight:600; font-size:12px;">Open Workspace</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// Super Agentic MCP — Client
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+
+const chatMessages = $('#chat-messages');
+const chatForm = $('#chat-form');
+const chatInput = $('#chat-input');
+
+// ── Modal Logic ──
+const modalBackdrop = $('#modal-backdrop');
+const inputSessionPath = $('#new-session-path');
+
+$('#btn-new-session').addEventListener('click', () => {
+    modalBackdrop.style.display = 'flex';
+    inputSessionPath.focus();
+});
+
+$('#btn-cancel-session').addEventListener('click', () => {
+    modalBackdrop.style.display = 'none';
+});
+
+$('#btn-create-session').addEventListener('click', () => {
+    const val = inputSessionPath.value.trim();
+    if (val) {
+        const cp = new URLSearchParams(window.location.search).get('cwd');
+        window.location.href = '?session=' + encodeURIComponent(val) + (cp ? '&cwd='+cp : '');
+    }
+});
+
+// ── Terminal Logic ──
+$('#terminal-input').addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+        const cmd = e.target.value;
+        if (!cmd.trim()) return;
+        e.target.value = '';
+        $('#terminal-output').textContent += `\n$ ${cmd}\n`;
+        try {
+            const res = await fetch('/api/terminal', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({command: cmd})
+            });
+            const data = await res.json();
+            $('#terminal-output').textContent += data.output + '\n';
+            $('#terminal-output').scrollTop = $('#terminal-output').scrollHeight;
+        } catch (err) {
+            $('#terminal-output').textContent += `Error: ${err}\n`;
+        }
+    }
+});
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modalBackdrop.style.display === 'flex') {
+        modalBackdrop.style.display = 'none';
+    }
+});
+
+// ── Navigation ──
+$$('.nav-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+        $$('.nav-item').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        $$('.view').forEach(v => v.classList.remove('active'));
+        const viewId = 'view-' + btn.dataset.view;
+        document.getElementById(viewId).classList.add('active');
+
+        if (btn.dataset.view === 'artifacts') loadArtifacts();
+        if (btn.dataset.view === 'files') loadFiles();
+    });
+});
+
+// ── Markdown-lite renderer ──
+async function executeAgentCommand(btn, cmd) {
+    btn.disabled = true;
+    btn.innerText = "Running...";
+    btn.style.opacity = "0.7";
+    
+    const actualCmd = cmd.replace(/\\n/g, '\n').replace(/&#39;/g, "'").replace(/&quot;/g, '"');
+    
+    try {
+        const res = await fetch('/api/terminal', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({command: actualCmd})
+        });
+        const data = await res.json();
+        
+        btn.innerText = "Completed ✅";
+        btn.style.background = "#2ea043";
+        btn.style.color = "#fff";
+        btn.style.opacity = "1";
+        
+        appendMessage('System', 'gemini', `**Execution Result:**\n\`\`\`\n${data.output}\n\`\`\``);
+        
+        // Auto feed back to agent
+        const input = document.getElementById('chat-input');
+        input.value = `I approved and executed your command. Here is the output:\n${data.output}`;
+        document.getElementById('chat-form').dispatchEvent(new Event('submit'));
+        
+    } catch (err) {
+        btn.innerText = "Failed ❌";
+        btn.style.background = "#ff4a4a";
+        appendMessage('System', 'gemini', `**Execution Failed:** ${err}`);
+    }
+}
+
+function renderMarkdown(text) {
+    if (!text) return "";
+    let html = String(text)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/```(bash|sh)\n([\s\S]*?)```/g, (match, lang, code) => {
+            const rawCode = code.replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/\n/g, '\\n');
+            return `<div style="position:relative; margin: 10px 0;"><button onclick="executeAgentCommand(this, '${rawCode}')" style="position:absolute; top:8px; right:8px; background:var(--accent-gemini); color:#fff; border:none; padding:4px 10px; border-radius:4px; font-size:12px; font-weight:600; cursor:pointer; z-index:10; box-shadow:0 2px 5px rgba(0,0,0,0.2);">Approve & Run</button><pre>${code}</pre></div>`;
+        })
+        .replace(/```\n?([\s\S]*?)```/g, '<pre>$1</pre>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+    return html;
+}
+
+// ── Chat Message Renderer ──
+function appendMessage(sender, role, text) {
+    const isUser = role === 'user';
+    const group = document.createElement('div');
+    group.className = `msg-group ${isUser ? 'user' : ''}`;
+
+    let senderHTML = '';
+    if (!isUser) {
+        const letter = sender.charAt(0).toUpperCase();
+        senderHTML = `<div class="msg-sender">
+            <div class="msg-avatar ${role}">${letter}</div>
+            <div class="msg-name ${role}">${sender}</div>
+        </div>`;
+    } else {
+        senderHTML = `<div class="msg-sender" style="justify-content:flex-end">
+            <div class="msg-name user">You</div>
+        </div>`;
+    }
+
+    group.innerHTML = `${senderHTML}<div class="msg-bubble ${role}">${renderMarkdown(text)}</div>`;
+    chatMessages.appendChild(group);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function showTyping() {
+    const el = document.createElement('div');
+    el.id = 'typing';
+    el.className = 'msg-group';
+    el.innerHTML = `<div class="msg-bubble" style="background:rgba(255,255,255,0.03);border:1px solid var(--border)"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+    chatMessages.appendChild(el);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+function hideTyping() {
+    const el = document.getElementById('typing');
+    if (el) el.remove();
+}
+
+// ── Attachments Logic ──
+let currentAttachments = [];
+const attachBtn = $('#btn-attach');
+const attachPreview = $('#attachments-preview');
+
+function updateAttachments() {
+    if (currentAttachments.length === 0) {
+        attachPreview.style.display = 'none';
+        return;
+    }
+    attachPreview.style.display = 'flex';
+    attachPreview.innerHTML = currentAttachments.map((p, i) => `
+        <div style="background:rgba(255,255,255,0.05); border:1px solid var(--border); padding:2px 8px; border-radius:12px; font-size:10px; display:flex; align-items:center; gap:4px;">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:10px;height:10px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            ${p.split('/').pop()}
+            <span style="cursor:pointer; color:var(--text-muted);" onclick="currentAttachments.splice(${i}, 1); updateAttachments();">×</span>
+        </div>
+    `).join('');
+}
+
+chatInput.addEventListener('input', (e) => {
+    const text = e.target.value;
+    const match = text.match(/@([~./a-zA-Z0-9_-]+)/);
+    if (match) {
+        const path = match[1];
+        if (path.length > 2 && (path.includes('/') || path.includes('.'))) {
+            if (!currentAttachments.includes(path)) {
+                currentAttachments.push(path);
+                updateAttachments();
+            }
+            e.target.value = text.replace(match[0], '').trim();
+        }
+    }
+});
+
+attachBtn.addEventListener('click', () => {
+    const path = prompt("Enter file path to attach:");
+    if (path && !currentAttachments.includes(path)) {
+        currentAttachments.push(path);
+        updateAttachments();
+    }
+});
+
+// ── Chat Submit ──
+chatForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const text = chatInput.value.trim();
+    if (!text && currentAttachments.length === 0) return;
+
+    let displayMsg = text;
+    if (currentAttachments.length > 0) {
+        displayMsg += `\n\n*Attached files: ${currentAttachments.map(p => '`'+p.split('/').pop()+'`').join(', ')}*`;
+    }
+
+    appendMessage('You', 'user', displayMsg);
+    chatInput.value = '';
+    const payloadAttachments = [...currentAttachments];
+    currentAttachments = [];
+    updateAttachments();
+
+    showTyping();
+    const mode = $('#agent-mode').value;
+
+    try {
+        const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: text, attachments: payloadAttachments, mode: mode })
+        });
+        const data = await res.json();
+        hideTyping();
+        for (const m of data.messages) {
+            appendMessage(m.sender, m.role, m.text);
+            if(typeof speakText === 'function') speakText(m.text);
+        }
+    } catch (err) {
+        hideTyping();
+        appendMessage('System', 'gemini', 'Connection to daemon failed.');
+    }
+});
+
+// ── Load History ──
+async function loadHistory() {
+    try {
+        const res = await fetch('/api/history');
+        const data = await res.json();
+        $('#sidebar-cwd').textContent = data.cwd;
+        if (data.messages.length === 0) {
+            appendMessage('Gemini', 'gemini', `Session initialized for \`${data.dirName}\`.`);
+        } else {
+            data.messages.forEach(m => appendMessage(m.sender, m.role, m.text));
+        }
+    } catch (e) {
+        appendMessage('System', 'gemini', 'Failed to connect to daemon.');
+    }
+}
+
+// ── Load Artifacts ──
+async function loadArtifacts() {
+    const grid = $('#artifacts-grid');
+    try {
+        const res = await fetch('/api/artifacts');
+        const data = await res.json();
+        if (data.artifacts.length === 0) {
+            grid.innerHTML = `<div class="artifacts-empty">No artifacts yet.</div>`;
+        } else {
+            grid.innerHTML = data.artifacts.map(a => `
+                <div class="artifact-card">
+                    <h3>${a.name}</h3>
+                    <div class="meta">${a.modified} · ${(a.size / 1024).toFixed(1)} KB</div>
+                </div>
+            `).join('');
+        }
+    } catch (e) { grid.innerHTML = 'Failed to load artifacts.'; }
+}
+
+// ── Load Files ──
+async function loadFiles(path) {
+    const list = $('#file-list');
+    const pathDisplay = $('#files-path');
+    const url = path ? `/api/files?path=${encodeURIComponent(path)}` : '/api/files';
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        pathDisplay.textContent = 'Browsing: ' + data.path;
+        list.innerHTML = data.entries.map(e => `
+            <div class="file-entry" ${e.isDir ? `onclick="loadFiles('${data.path}/${e.name}')"` : ''}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    ${e.isDir
+                        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>'
+                        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>'
+                    }
+                </svg>
+                <span class="fname">${e.name}</span>
+                <span class="fsize">${e.isDir ? '—' : (e.size / 1024).toFixed(1) + ' KB'}</span>
+            </div>
+        `).join('');
+    } catch (e) { list.innerHTML = 'Failed to load files.'; }
+}
+
+async function loadSessions() {
+    const list = $('#session-list');
+    try {
+        const res = await fetch('/api/sessions' + window.location.search);
+        const data = await res.json();
+        let html = '<div class="sidebar-section-title" style="font-size:10px; margin-top:8px; color:var(--accent-gemini);">Threads</div>';
+        html += data.threads.map(s => `
+            <div class="nav-item" style="font-size:11px; padding:6px 12px; height:auto; display:block;" onclick="window.location.href='?session=${encodeURIComponent(s.name)}' + (urlParams.has('cwd') ? '&cwd='+encodeURIComponent(urlParams.get('cwd')) : '')">
+                <div style="font-weight:600; color:var(--text-primary);">${s.name}</div>
+                <div style="font-size:10px; color:var(--text-muted);">${s.lastModified}</div>
+            </div>
+        `).join('');
+        
+        if (data.workspaces.length > 0) {
+            html += '<div class="sidebar-section-title" style="font-size:10px; margin-top:16px; color:var(--accent-gemini);">Workspaces</div>';
+            html += data.workspaces.map(w => `
+                <div class="nav-item" style="font-size:11px; padding:6px 12px; height:auto; display:block;" onclick="window.location.href='?cwd=${encodeURIComponent(w.path)}'">
+                    <div style="font-weight:600; color:var(--text-primary);">${w.name}</div>
+                    <div style="font-size:10px; color:var(--text-muted);">${w.lastModified}</div>
+                </div>
+            `).join('');
+        }
+        
+        list.innerHTML = html;
+    } catch (e) { console.error("Failed to load sessions", e); }
+}
+
+// ── Voice Integration (STT & TTS) ──
+let ttsEnabled = false;
+const btnTts = $('#btn-tts');
+if (btnTts) {
+    btnTts.addEventListener('click', () => {
+        ttsEnabled = !ttsEnabled;
+        btnTts.style.color = ttsEnabled ? '#10a37f' : 'var(--text-muted)';
+        if(ttsEnabled) {
+            appendMessage('System', 'gemini', 'TTS Narration Enabled. (If you hear nothing, your browser may lack TTS voices or requires you to click the page first).');
+            // Prime the speech engine to bypass auto-play policies
+            if(window.speechSynthesis) {
+                const primeMsg = new SpeechSynthesisUtterance("Voice active.");
+                primeMsg.volume = 0; // Silent prime
+                window.speechSynthesis.speak(primeMsg);
+            }
+        } else {
+            appendMessage('System', 'gemini', 'TTS Narration Disabled.');
+            if(window.speechSynthesis) window.speechSynthesis.cancel();
+        }
+    });
+}
+
+function speakText(text) {
+    if (!ttsEnabled || !window.speechSynthesis) return;
+    const cleanText = text.replace(/<[^>]+>/g, '').replace(/```[\s\S]*?```/g, 'Code block omitted.');
+    const msg = new SpeechSynthesisUtterance(cleanText);
+    msg.rate = 1.0;
+    msg.pitch = 1.0;
+    window.speechSynthesis.speak(msg);
+}
+
+const btnVoice = $('#btn-voice');
+let isRecording = false;
+
+// We use SpeechRecognition for live dictation
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+// Audio Visualizer Context
+let audioCtx;
+let analyser;
+let micStreamSource;
+let visDataArray;
+let visFrameId;
+let localStream;
+
+function startVisualizer(stream) {
+    localStream = stream;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    micStreamSource = audioCtx.createMediaStreamSource(stream);
+    micStreamSource.connect(analyser);
+    
+    analyser.fftSize = 64; // Low resolution for 5 bars
+    const bufferLength = analyser.frequencyBinCount;
+    visDataArray = new Uint8Array(bufferLength);
+    
+    const bars = document.querySelectorAll('#audio-visualizer .bar');
+    $('#audio-visualizer').style.display = 'flex';
+    
+    function draw() {
+        if (!isRecording) return;
+        visFrameId = requestAnimationFrame(draw);
+        analyser.getByteFrequencyData(visDataArray);
+        
+        for (let i = 0; i < bars.length; i++) {
+            // Map the lower frequency bins to our 5 bars
+            const value = visDataArray[i * 2 + 1]; 
+            const height = Math.max(4, (value / 255) * 20); // Max 20px
+            bars[i].style.height = `${height}px`;
+        }
+    }
+    draw();
+}
+
+function stopVisualizer() {
+    $('#audio-visualizer').style.display = 'none';
+    if(visFrameId) cancelAnimationFrame(visFrameId);
+    if(audioCtx) audioCtx.close();
+    if(localStream) localStream.getTracks().forEach(track => track.stop());
+}
+
+if (SpeechRec) {
+    const recognition = new SpeechRec();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    
+    let finalTranscript = '';
+
+    btnVoice.addEventListener('click', async () => {
+        if (!isRecording) {
+            try {
+                // Explicitly ask for hardware permission to force the browser prompt!
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                startVisualizer(stream);
+                
+                finalTranscript = $('#chat-input').value ? $('#chat-input').value + ' ' : '';
+                recognition.start();
+                btnVoice.style.color = '#ff4a4a';
+                isRecording = true;
+                appendMessage('System', 'gemini', '🎤 **Live Dictation Active:** Speak your command. Click the mic again to stop and auto-submit.');
+            } catch(e) {
+                appendMessage('System', 'gemini', '❌ **Microphone Permission Denied:** Please click the lock icon in your browser URL bar and explicitly Allow microphone access. Error: ' + e.message);
+            }
+        } else {
+            // Stop recording
+            recognition.stop();
+            stopVisualizer();
+            btnVoice.style.color = 'var(--text-muted)';
+            isRecording = false;
+            
+            // Auto-submit after stopping if text exists
+            setTimeout(() => {
+                if ($('#chat-input').value.trim() !== '') {
+                    $('#chat-form').dispatchEvent(new Event('submit'));
+                }
+            }, 500);
+        }
+    });
+    
+    recognition.onerror = (event) => {
+        if (event.error === 'no-speech') return;
+        appendMessage('System', 'gemini', '⚠️ **Microphone Error:** ' + event.error + '. (Note: Linux Chromium sometimes requires an internet connection or HTTPS for dictation).');
+        stopVisualizer();
+        btnVoice.style.color = 'var(--text-muted)';
+        isRecording = false;
+    };
+    
+    recognition.onresult = (event) => {
+        let interimTranscript = '';
+        let currentFinal = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (event.results[i].isFinal) {
+                currentFinal += event.results[i][0].transcript + ' ';
+            } else {
+                interimTranscript += event.results[i][0].transcript;
+            }
+        }
+        finalTranscript += currentFinal;
+        $('#chat-input').value = finalTranscript + interimTranscript;
+    };
+    
+    recognition.onend = () => {
+        if (isRecording) {
+            // Restart automatically if the browser cuts it off during a pause
+            recognition.start();
+        }
+    };
+} else {
+    if(btnVoice) btnVoice.style.display = 'none';
+}
+
+// ── Load Config ──
+async function loadConfig() {
+    try {
+        const res = await fetch('/api/config');
+        const config = await res.json();
+        document.querySelectorAll('.toggle').forEach(t => {
+            const key = t.getAttribute('data-key');
+            if (config[key] !== undefined) {
+                if (config[key]) t.classList.add('on');
+                else t.classList.remove('on');
+            }
+        });
+
+        // Load Agents Dropdown
+        const agentRes = await fetch('/api/agents');
+        const agentData = await agentRes.json();
+        const select = $('#orchestrator-select');
+        if (select) {
+            select.innerHTML = '';
+            for (const [name, meta] of Object.entries(agentData.agents || {})) {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.innerText = `${name} (${meta.type})`;
+                select.appendChild(opt);
+            }
+            if (config['orchestrator_model']) {
+                select.value = config['orchestrator_model'];
+            }
+        }
+    } catch (e) {
+        console.error("Failed to load config", e);
+    }
+}
+
+// Bind Settings Elements
+async function saveConfigState() {
+    const newConfig = {};
+    document.querySelectorAll('.toggle').forEach(el => {
+        newConfig[el.getAttribute('data-key')] = el.classList.contains('on');
+    });
+    const select = $('#orchestrator-select');
+    if (select) newConfig['orchestrator_model'] = select.value;
+    
+    try {
+        await fetch('/api/config' + window.location.search, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newConfig)
+        });
+    } catch(e) { console.error('Failed to save config', e); }
+}
+
+document.querySelectorAll('.toggle').forEach(t => {
+    t.addEventListener('click', async () => {
+        t.classList.toggle('on');
+        await saveConfigState();
+    });
+});
+
+const orchSelect = $('#orchestrator-select');
+if (orchSelect) {
+    orchSelect.addEventListener('change', async () => {
+        await saveConfigState();
+    });
+}
+
+// ── Boot ──
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has('cwd')) {
+    localStorage.setItem('last_cwd', urlParams.get('cwd'));
+} else {
+    const lastCwd = localStorage.getItem('last_cwd');
+    if (lastCwd) {
+        window.location.href = `?cwd=${encodeURIComponent(lastCwd)}`;
+    }
+}
+loadConfig();
+loadHistory();
+loadSessions();
+
+// ── Over-The-Air (OTA) Update Checker ──
+let currentVersion = null;
+setInterval(async () => {
+    try {
+        const res = await fetch('/api/version');
+        const data = await res.json();
+        if (currentVersion === null) {
+            currentVersion = data.version;
+        } else if (currentVersion !== data.version) {
+            let toast = $('#update-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'update-toast';
+                toast.style.cssText = 'position:fixed; bottom:20px; right:20px; background:#10a37f; color:white; padding:12px 20px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; box-shadow:0 4px 12px rgba(0,0,0,0.5); z-index:9999; animation: pulse 2s infinite;';
+                toast.innerHTML = '🔄 Platform Update Available! Click to apply seamlessly.';
+                toast.onclick = () => window.location.reload();
+                document.body.appendChild(toast);
+            }
+        }
+    } catch(e) {}
+}, 3000);
+
+</script>
+</body>
+</html>

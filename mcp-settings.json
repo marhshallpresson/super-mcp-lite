@@ -1,0 +1,17 @@
+{
+  "system": {
+    "sandbox_mode": true,
+    "sandbox_engine": "docker",
+    "allow_root_execution": false
+  },
+  "agent": {
+    "default_cli": "codex",
+    "long_term_memory": true,
+    "memory_engine": "qdrant_sqlite"
+  },
+  "execution": {
+    "background_queues": true,
+    "max_concurrent_tasks": 5,
+    "lsp_integration": true
+  }
+}

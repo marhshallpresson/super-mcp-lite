@@ -1,0 +1,60 @@
+Based on the provided Linux Mint forum thread, the user successfully recovered their system using Option 1 ("Something Else" installation method) because they had a separate /home partition (sda4) distinct from their root system partition (sda2). 
+ 
+Here is the exact step-by-step guide discussed and validated in that forum thread:
+ 
+ 
+Step 1: Optional Safety Move (The "Muffin Man" Trick)
+ 
+If you want an extra layer of safety for your local configurations before installing, do this from your Live USB session: 
+ 
+
+    Open the file manager in your Live USB session.
+    Mount your internal hard drive.
+    Navigate to your /home folder and rename your user folder from /home/username to something like /home/username.bak.
+
+ 
+
+    Note: This forces the installer to create a completely clean home directory configuration for you, while keeping your old data intact inside the .bak folder to copy over later.
+
+ 
+ 
+Step 2: Configure the Installer via "Something Else"
+ 
+
+    Launch the Install Linux Mint wizard from your Live USB desktop.
+    Advance through the configuration menus until you reach the Installation Type screen.
+    Select Something else and click Continue. 
+
+ 
+ 
+Step 3: Map Your Partitions Correctly
+ 
+You will see a list of your disk partitions (similar to the user's sda2 and sda4). You must map them explicitly without formatting the data drive: 
+ 
+ 
+1. Set Up Your Root Partition (e.g., sda2)
+ 
+
+    Highlight your system root partition and click Change...
+    Use as: Ext4 journaling file system
+    Mount point: /
+    Format the partition: Check this box (this wipes the corrupted system files cleanly). 
+
+ 
+2. Set Up Your Home Partition (e.g., sda4)
+ 
+
+    Highlight your data/home partition and click Change...
+    Use as: Ext4 journaling file system
+    Mount point: Type or select /home
+    Format the partition: Leave this box UNCHECKED. (Crucial step: This tells the installer to link to your files without wiping them). 
+
+ 
+ 
+Step 4: Finalize the Installation
+ 
+
+    Review the partition map to ensure Format is only checked for the root (/) partition, and NOT checked for /home. 
+
+    Click Install Now and proceed with setting up your user account details (use the same username as before if you want it to link seamlessly). 
+    If you used the Step 1 trick, you can open your files after booting into the new install and drag your documents from username.bak into your new user folders.
