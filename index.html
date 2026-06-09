@@ -838,75 +838,69 @@ function stopVisualizer() {
     if(localStream) localStream.getTracks().forEach(track => track.stop());
 }
 
-if (SpeechRec) {
-    const recognition = new SpeechRec();
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    
-    let finalTranscript = '';
+let mediaRecorder;
+let audioChunks = [];
 
-    btnVoice.addEventListener('click', async () => {
-        if (!isRecording) {
-            try {
-                // Explicitly ask for hardware permission to force the browser prompt!
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                startVisualizer(stream);
-                
-                finalTranscript = $('#chat-input').value ? $('#chat-input').value + ' ' : '';
-                recognition.start();
-                btnVoice.style.color = '#ff4a4a';
-                isRecording = true;
-                appendMessage('System', 'gemini', '🎤 **Live Dictation Active:** Speak your command. Click the mic again to stop and auto-submit.');
-            } catch(e) {
-                appendMessage('System', 'gemini', '❌ **Microphone Permission Denied:** Please click the lock icon in your browser URL bar and explicitly Allow microphone access. Error: ' + e.message);
-            }
-        } else {
-            // Stop recording
-            recognition.stop();
-            stopVisualizer();
-            btnVoice.style.color = 'var(--text-muted)';
-            isRecording = false;
+btnVoice.addEventListener('click', async () => {
+    if (!isRecording) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            startVisualizer(stream);
             
-            // Auto-submit after stopping if text exists
-            setTimeout(() => {
-                if ($('#chat-input').value.trim() !== '') {
-                    $('#chat-form').dispatchEvent(new Event('submit'));
+            audioChunks = [];
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            
+            mediaRecorder.ondataavailable = e => {
+                if (e.data.size > 0) audioChunks.push(e.data);
+            };
+            
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                
+                // Show a processing indicator
+                appendMessage('System', 'gemini', '⚙️ **Processing Audio:** Sending encrypted buffer to offline STT engine...');
+                
+                try {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(audioBlob);
+                    reader.onloadend = async () => {
+                        const base64Audio = reader.result;
+                        const res = await fetch('/api/voice', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ audio_b64: base64Audio })
+                        });
+                        
+                        const data = await res.json();
+                        if (data.text) {
+                        $('#chat-input').value = ($('#chat-input').value + ' ' + data.text).trim();
+                        appendMessage('System', 'gemini', `✅ **Transcription Complete:**\n\n> ${data.text}`);
+                    } else {
+                        appendMessage('System', 'gemini', `❌ **Audio Error:** ${data.error || 'No speech detected.'}`);
+                    }
+                }; // Close reader.onloadend
+                } catch (err) {
+                    appendMessage('System', 'gemini', `❌ **Backend Error:** Could not reach the offline Vosk engine.`);
                 }
-            }, 500);
+            };
+            
+            mediaRecorder.start();
+            btnVoice.style.color = '#ff4a4a';
+            isRecording = true;
+            appendMessage('System', 'gemini', '🎤 **Live Dictation Active:** Speak your command. Click the mic again to stop and auto-transcribe.');
+        } catch(e) {
+                appendMessage('System', 'gemini', '❌ **Microphone Permission Denied:** Please click the lock icon in your browser URL bar and explicitly Allow microphone access. Error: ' + e.message);
         }
-    });
-    
-    recognition.onerror = (event) => {
-        if (event.error === 'no-speech') return;
-        appendMessage('System', 'gemini', '⚠️ **Microphone Error:** ' + event.error + '. (Note: Linux Chromium sometimes requires an internet connection or HTTPS for dictation).');
-        stopVisualizer();
-        btnVoice.style.color = 'var(--text-muted)';
+    } else {
+        // Stop Recording
         isRecording = false;
-    };
-    
-    recognition.onresult = (event) => {
-        let interimTranscript = '';
-        let currentFinal = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-            if (event.results[i].isFinal) {
-                currentFinal += event.results[i][0].transcript + ' ';
-            } else {
-                interimTranscript += event.results[i][0].transcript;
-            }
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop();
         }
-        finalTranscript += currentFinal;
-        $('#chat-input').value = finalTranscript + interimTranscript;
-    };
-    
-    recognition.onend = () => {
-        if (isRecording) {
-            // Restart automatically if the browser cuts it off during a pause
-            recognition.start();
-        }
-    };
-} else {
-    if(btnVoice) btnVoice.style.display = 'none';
-}
+        btnVoice.style.color = 'var(--text-primary)';
+        stopVisualizer();
+    }
+});
 
 // ── Load Config ──
 async function loadConfig() {

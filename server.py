@@ -868,6 +868,68 @@ class SuperDaemonHandler(http.server.BaseHTTPRequestHandler):
             self.send_json({"messages": responses})
             return
 
+        if path == '/api/voice':
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                b64 = data.get('audio_b64', '')
+                if not b64 or ',' not in b64:
+                     self.send_json({"error": "Invalid base64 audio"}, 400)
+                     return
+                
+                raw_b64 = b64.split(',')[1]
+                import base64, tempfile, subprocess
+                audio_bytes = base64.b64decode(raw_b64)
+                
+                with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as f:
+                    f.write(audio_bytes)
+                    temp_webm = f.name
+                
+                temp_wav = temp_webm + '.wav'
+                # Transcode via ffmpeg to 16kHz mono PCM
+                subprocess.run(['/home/mobot/bin/ffmpeg', '-i', temp_webm, '-ar', '16000', '-ac', '1', '-f', 'wav', temp_wav, '-y'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+                # Lazy load Vosk model
+                import wave
+                try:
+                    from vosk import Model, KaldiRecognizer
+                except ImportError:
+                    self.send_json({"error": "Vosk python package not installed"}, 500)
+                    return
+                    
+                global vosk_model
+                if 'vosk_model' not in globals():
+                    if not os.path.exists("/home/mobot/super-mcp-lite/models/vosk-model"):
+                        self.send_json({"error": "Vosk model not downloaded"}, 500)
+                        return
+                    vosk_model = Model("/home/mobot/super-mcp-lite/models/vosk-model")
+                
+                wf = wave.open(temp_wav, "rb")
+                rec = KaldiRecognizer(vosk_model, 16000)
+                
+                result_text = ""
+                while True:
+                    frame_data = wf.readframes(4000)
+                    if len(frame_data) == 0:
+                        break
+                    if rec.AcceptWaveform(frame_data):
+                        res = json.loads(rec.Result())
+                        result_text += res.get("text", "") + " "
+                
+                final_res = json.loads(rec.FinalResult())
+                result_text += final_res.get("text", "")
+                
+                os.remove(temp_webm)
+                os.remove(temp_wav)
+                
+                self.send_json({"text": result_text.strip()})
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                self.send_json({"error": str(e)}, 500)
+            return
+
         if path == '/api/config':
             content_length = int(self.headers.get('Content-Length', 0))
             post_data = self.rfile.read(content_length)
