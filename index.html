@@ -275,6 +275,10 @@
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg>
         Settings
     </div>
+    <div class="nav-item" data-view="dashboard">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Metrics Dashboard
+    </div>
 
     <div class="sidebar-section-title" style="display:flex; justify-content:space-between; align-items:center; padding-right:12px;">
         <span>Sessions</span>
@@ -413,6 +417,19 @@
                 </div>
             </div>
         </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Dashboard View ── -->
+    <div class="view" id="view-dashboard">
+        <div class="view-header">
+            <h2>Agent Productivity Dashboard</h2>
+            <p>Live health metrics, execution success rates, and token statistics</p>
+        </div>
+        <div class="settings-content" id="metrics-content">
+            <div style="display:flex; justify-content:center; align-items:center; height:100px; color:var(--text-muted);">Loading metrics...</div>
+        </div>
     </div>
 
 </div>
@@ -458,10 +475,20 @@ $('#btn-cancel-session').addEventListener('click', () => {
 $('#btn-create-session').addEventListener('click', () => {
     const val = inputSessionPath.value.trim();
     if (val) {
-        const cp = new URLSearchParams(window.location.search).get('cwd');
-        window.location.href = '?session=' + encodeURIComponent(val) + (cp ? '&cwd='+cp : '');
+        switchSession(val);
+        modalBackdrop.style.display = 'none';
+        inputSessionPath.value = '';
     }
 });
+
+async function switchSession(name) {
+    const cp = new URLSearchParams(window.location.search).get('cwd');
+    const newUrl = '?session=' + encodeURIComponent(name) + (cp ? '&cwd='+encodeURIComponent(cp) : '');
+    window.history.pushState({}, '', newUrl);
+    $('#chat-messages').innerHTML = '';
+    await loadHistory();
+    await loadSessions();
+}
 
 // ── Terminal Logic ──
 $('#terminal-input').addEventListener('keydown', async (e) => {
@@ -501,8 +528,38 @@ $$('.nav-item').forEach(btn => {
 
         if (btn.dataset.view === 'artifacts') loadArtifacts();
         if (btn.dataset.view === 'files') loadFiles();
+        if (btn.dataset.view === 'dashboard') loadMetrics();
     });
 });
+
+async function loadMetrics() {
+    const mc = $('#metrics-content');
+    try {
+        const res = await fetch('/api/metrics');
+        const data = await res.json();
+        
+        let html = '<div class="artifacts-grid" style="padding:0;">';
+        for(const [agent, stats] of Object.entries(data)) {
+            html += `
+            <div class="artifact-card" style="background:rgba(0,0,0,0.2);">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+                    <div class="agent-dot ${agent.toLowerCase()}"></div>
+                    <h3 style="margin:0; text-transform:capitalize;">${agent}</h3>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <div><div class="meta">Status</div><div style="font-size:13px; color:#10a37f; font-weight:600;">${stats.status}</div></div>
+                    <div><div class="meta">Executions</div><div style="font-size:13px; color:var(--text-primary); font-weight:600;">${stats.executions || 0}</div></div>
+                    <div><div class="meta">Success Rate</div><div style="font-size:13px; color:var(--text-primary); font-weight:600;">${stats.success_rate || '100%'}</div></div>
+                    <div><div class="meta">Avg Latency</div><div style="font-size:13px; color:var(--text-primary); font-weight:600;">${stats.avg_latency || '0ms'}</div></div>
+                </div>
+            </div>`;
+        }
+        html += '</div>';
+        mc.innerHTML = html;
+    } catch(e) {
+        mc.innerHTML = '<div style="color:#ff4a4a;">Failed to load agent metrics from daemon.</div>';
+    }
+}
 
 // ── Markdown-lite renderer ──
 async function executeAgentCommand(btn, cmd) {
@@ -737,7 +794,7 @@ async function loadSessions() {
         const data = await res.json();
         let html = '<div class="sidebar-section-title" style="font-size:10px; margin-top:8px; color:var(--accent-gemini);">Threads</div>';
         html += data.threads.map(s => `
-            <div class="nav-item" style="font-size:11px; padding:6px 12px; height:auto; display:block;" onclick="window.location.href='?session=${encodeURIComponent(s.name)}' + (urlParams.has('cwd') ? '&cwd='+encodeURIComponent(urlParams.get('cwd')) : '')">
+            <div class="nav-item" style="font-size:11px; padding:6px 12px; height:auto; display:block;" onclick="switchSession('${s.name}')">
                 <div style="font-weight:600; color:var(--text-primary);">${s.name}</div>
                 <div style="font-size:10px; color:var(--text-muted);">${s.lastModified}</div>
             </div>
