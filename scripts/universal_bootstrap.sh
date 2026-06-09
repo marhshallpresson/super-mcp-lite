@@ -33,9 +33,6 @@ echo "[*] Installing native Python dependencies..."
 pip install --upgrade pip > /dev/null
 pip install vosk piper-tts sounddevice numpy > /dev/null
 pip install requests flask > /dev/null
-# Add CLI integrations (Aider)
-pip install aider-chat > /dev/null
-
 # 4. Downloading Portable Ollama (if not present)
 if [ ! -f "$BIN_DIR/ollama" ]; then
     echo "[*] Downloading Portable Ollama static binary..."
@@ -49,29 +46,10 @@ if [ ! -f "$BIN_DIR/ollama" ]; then
     fi
 fi
 
-# 5. Interactive CLI Auth Flow
-echo ""
-echo "====================================================="
-echo "🔑 Interactive Agent Authentication"
-echo "====================================================="
-ENV_FILE="$PROJECT_ROOT/.env"
-touch "$ENV_FILE"
+# 5. Advanced Interactive Setup Wizard
+echo "[*] Launching Advanced Interactive Onboarding Wizard..."
+python3 "$PROJECT_ROOT/scripts/setup_wizard.py"
 
-if ! grep -q "ANTHROPIC_API_KEY" "$ENV_FILE"; then
-    read -p "Enter Anthropic API Key for Claude Code / Aider (or press enter to skip): " anthropic_key
-    if [ -n "$anthropic_key" ]; then
-        echo "ANTHROPIC_API_KEY=$anthropic_key" >> "$ENV_FILE"
-        echo "[✓] Saved Anthropic Key."
-    fi
-fi
-
-if ! grep -q "GITHUB_TOKEN" "$ENV_FILE"; then
-    read -p "Enter GitHub PAT for SWE-Agent (or press enter to skip): " gh_token
-    if [ -n "$gh_token" ]; then
-        echo "GITHUB_TOKEN=$gh_token" >> "$ENV_FILE"
-        echo "[✓] Saved GitHub Token."
-    fi
-fi
 
 echo ""
 echo "====================================================="
