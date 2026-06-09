@@ -107,6 +107,21 @@ def main():
         else:
             print("  [Skipped]")
 
+    # Custom Agent Installation Loop
+    print_header("🔌 CUSTOM AGENTS & PLUGINS")
+    while True:
+        custom = input("  Would you like to install a custom AI Agent/CLI not listed above? (y/N): ").strip().lower()
+        if custom == 'y':
+            pkg_mgr = input("  Package Manager (pip3 / npm / apt / brew): ").strip().lower()
+            pkg_name = input("  Exact Package Name: ").strip()
+            if pkg_mgr and pkg_name:
+                cmd = f"{pkg_mgr} install {'-g ' if pkg_mgr == 'npm' else ''}{pkg_name}"
+                print(f"  \033[1;32m[*] Running: {cmd}\033[0m")
+                subprocess.run(cmd, shell=True)
+                print("  [✓] Installed!")
+        else:
+            break
+
     # Save ENV file
     if env_vars_to_save:
         env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
