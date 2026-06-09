@@ -1014,7 +1014,7 @@ if __name__ == '__main__':
 
     run_health_checks()
 
-    with ReusableTCPServer(("", PORT), SuperDaemonHandler) as httpd:
+    with ReusableTCPServer(("127.0.0.1", PORT), SuperDaemonHandler) as httpd:
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
