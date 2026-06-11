@@ -837,12 +837,10 @@ if (btnTts) {
 }
 
 function speakText(text) {
-    if (!ttsEnabled || !window.speechSynthesis) return;
-    const cleanText = text.replace(/<[^>]+>/g, '').replace(/```[\s\S]*?```/g, 'Code block omitted.');
-    const msg = new SpeechSynthesisUtterance(cleanText);
-    msg.rate = 1.0;
-    msg.pitch = 1.0;
-    window.speechSynthesis.speak(msg);
+    if (!ttsEnabled) return;
+    const cleanText = text.replace(/<[^>]+>/g, '').replace(/```[\s\S]*?```/g, 'Code block omitted for brevity.').substring(0, 300);
+    const audio = new Audio('/api/tts?text=' + encodeURIComponent(cleanText));
+    audio.play().catch(e => console.error("Piper TTS Play Error:", e));
 }
 
 const btnVoice = $('#btn-voice');

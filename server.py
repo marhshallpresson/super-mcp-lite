@@ -723,6 +723,27 @@ class SuperDaemonHandler(http.server.BaseHTTPRequestHandler):
             self.send_json({"version": str(mtime)})
             return
 
+        if path == '/api/tts':
+            text = params.get('text', [''])[0]
+            if not text:
+                self.send_json({"error": "No text"}, 400)
+                return
+            import subprocess, tempfile
+            with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as f:
+                tmp_path = f.name
+            try:
+                subprocess.run(['/home/mobot/.local/bin/piper', '--model', '/home/mobot/super-mcp-lite/models/en_US-lessac-low.onnx', '--output_file', tmp_path], input=text.encode('utf-8'), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                self.send_response(200)
+                self.send_header('Content-Type', 'audio/wav')
+                self.end_headers()
+                with open(tmp_path, 'rb') as f:
+                    self.wfile.write(f.read())
+            except Exception as e:
+                self.send_json({"error": str(e)}, 500)
+            finally:
+                if os.path.exists(tmp_path): os.remove(tmp_path)
+            return
+
         if path == '/api/history':
             history = load_history()
             self.send_json({"messages": history, "cwd": TARGET_DIR, "dirName": os.path.basename(TARGET_DIR)})
